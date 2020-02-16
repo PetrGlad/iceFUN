@@ -15,65 +15,61 @@
  * 
  */
  
-`include "ledscan.v"
+`include "led_display.v"
 
 module top (
-	input clk12MHz, 
-	output led1, 
-	output led2, 
-	output led3, 
-	output led4, 
-	output led5, 
-	output led6, 
-	output led7, 
-	output led8, 
-	output lcol1, 
-	output lcol2, 
-	output lcol3, 
-	output lcol4
-	);
+	input clk12MHz,
+	output led1,
+	output led2,
+	output led3,
+	output led4,
+	output led5,
+	output led6,
+	output led7,
+	output led8,
+	output lcol1,
+	output lcol2,
+	output lcol3,
+	output lcol4,
+);
 
-// these are the led holding registers, whatever you write to these appears on the led display
+// This is "video memory", state of these bits appears on the led display.
 	reg [7:0] leds1;
 	reg [7:0] leds2;
 	reg [7:0] leds3;
 	reg [7:0] leds4;
 	
-// The output from the ledscan module
-	wire [7:0] leds;
-	wire [3:0] lcol;
+// Instantiate the led display module
+ 	LedDisplay display (
+		.clk12MHz(clk12MHz),
+		.led1(led1),
+		.led2(led2),
+		.led3(led3),
+		.led4(led4),
+		.led5(led5),
+		.led6(led6),
+		.led7(led7),
+		.led8(led8),
+		.lcol1(lcol1),
+		.lcol2(lcol2),
+		.lcol3(lcol3),
+		.lcol4(lcol4),
 
-// map the output of ledscan to the port pins	
-	assign { led8, led7, led6, led5, led4, led3, led2, led1 } = leds[7:0];
-	assign { lcol4, lcol3, lcol2, lcol1 } = lcol[3:0];
-	
-// Counter register
-    reg [31:0] counter = 32'b0;
-
-// instantiate the led scan module
- 	LedScan scan (
-		.clk12MHz(clk12MHz), 
-		.leds1(leds1),		
+		.leds1(leds1),
 		.leds2(leds2),
 		.leds3(leds3),
 		.leds4(leds4),
-		.leds(leds), 
-		.lcol(lcol)
 	);
 
-  
-  // This is where you place data in the leds matrix for display.
-  // Here we put a counter on the 1st column and a simple pattern on the others
-    always @ (*) begin
-		leds1[7:0] = ~counter[28:21];
-		leds2[7:0] = 8'b11111100;
-		leds3[7:0] = 8'b11100011;
-		leds4[7:0] = 8'b00111111;
-    end
+    reg [48:0] counter = 48'b0;
 
-// increment the counter every clock, only the upper bits are mapped to the leds.	
-    always @ (posedge clk12MHz) begin
+	always @ (posedge clk12MHz) begin
         counter <= counter + 1;
     end
+
+	assign leds1[7:0] = counter[16:23];
+	assign leds2[7:0] = counter[24:31];
+	assign leds3[7:0] = counter[32:39];
+	assign leds4[7:0] = counter[40:47];
 
 endmodule
