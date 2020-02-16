@@ -40,43 +40,27 @@ module LedDisplay (
 	input [7:0] leds4,
 	);
 
-	// Scan clock
+	// Row scan clock
 	reg [11:0] clock = 12'b0;
 
-	// Row selector
-	wire [3:0] led_col;
-
-	// Row state
-	wire [7:0] led_row;
-
-	// Map the output to the port pins
-	assign { led8, led7, led6, led5, led4, led3, led2, led1 } = led_row[7:0];
-	assign { lcol4, lcol3, lcol2, lcol1 } = led_col[3:0];
-
-	// Highlight LED rows sequentially in cycle
 	always @ (posedge clk12MHz) begin
-		case (clock[11:10])
-			2'b00: begin
-    			led_row[7:0] <= ~leds1[7:0];
-				led_col[3:0] <= 4'b1110;
-			end
-			2'b01: begin
-    			led_row[7:0] <= ~leds2[7:0];
-				led_col[3:0] <= 4'b1101;
-			end
-			2'b10: begin
-    			led_row[7:0] <= ~leds3[7:0];
-				led_col[3:0] <= 4'b1011;
-			end
-			2'b11: begin
-    			led_row[7:0] <= ~leds4[7:0];
-				led_col[3:0] <= 4'b0111;
-			end
-    	endcase
-    end
-
-    always @ (posedge clk12MHz) begin
         clock <= clock + 1;
     end
 
+	assign row = clock[11:10];
+
+	// Select LED rows sequentially in cycle
+	assign { lcol4, lcol3, lcol2, lcol1 } = ~(1 << row);
+
+	// Map row state to the port pins
+	wire [7:0] led_row;
+	assign { led8, led7, led6, led5, led4, led3, led2, led1 } = ~led_row[7:0];
+	always @ (row) begin
+		case (row)
+			0: led_row = leds1;
+			1: led_row = leds2;
+			2: led_row = leds3;
+			3: led_row = leds4;
+    	endcase
+    end
 endmodule

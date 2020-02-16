@@ -34,10 +34,10 @@ module top (
 );
 
 // This is "video memory", state of these bits appears on the led display.
-	reg [7:0] leds1;
-	reg [7:0] leds2;
-	reg [7:0] leds3;
-	reg [7:0] leds4;
+	wire [7:0] leds1;
+	wire [7:0] leds2;
+	wire [7:0] leds3;
+	wire [7:0] leds4;
 	
 // Instantiate the led display module
  	LedDisplay display (
