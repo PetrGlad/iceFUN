@@ -47,7 +47,7 @@ module LedDisplay (
         clock <= clock + 1;
     end
 
-	assign row = clock[11:10];
+	wire [1:0] row = clock[11:10];
 
 	// Select LED rows sequentially in cycle
 	assign { lcol4, lcol3, lcol2, lcol1 } = ~(1 << row);
