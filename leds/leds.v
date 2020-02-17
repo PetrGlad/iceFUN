@@ -1,20 +1,20 @@
 /*
- *  
+ *
  *  Copyright(C) 2018 Gerald Coe, Devantech Ltd <gerry@devantech.co.uk>
- * 
+ *
  *  Permission to use, copy, modify, and/or distribute this software for any purpose with or
- *  without fee is hereby granted, provided that the above copyright notice and 
+ *  without fee is hereby granted, provided that the above copyright notice and
  *  this permission notice appear in all copies.
- * 
+ *
  *  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO
- *  THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. 
- *  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL 
+ *  THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS.
+ *  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
  *  DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
- *  AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN 
+ *  AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  *  CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- * 
+ *
  */
- 
+
 `include "led_display.v"
 
 module top (
@@ -38,7 +38,7 @@ module top (
 	wire [7:0] leds2;
 	wire [7:0] leds3;
 	wire [7:0] leds4;
-	
+
 // Instantiate the led display module
  	LedDisplay display (
 		.clk12MHz(clk12MHz),
@@ -61,15 +61,12 @@ module top (
 		.leds4(leds4),
 	);
 
-    reg [48:0] counter = 48'b0;
+    reg [48:0] counter = 0;
 
 	always @ (posedge clk12MHz) begin
         counter <= counter + 1;
     end
 
-	assign leds1[7:0] = counter[16:23];
-	assign leds2[7:0] = counter[24:31];
-	assign leds3[7:0] = counter[32:39];
-	assign leds4[7:0] = counter[40:47];
+	assign {leds1, leds2, leds3, leds4 } = counter;
 
 endmodule

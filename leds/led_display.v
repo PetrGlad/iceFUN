@@ -41,7 +41,7 @@ module LedDisplay (
 	);
 
 	// Row scan clock
-	reg [11:0] clock = 12'b0;
+	reg [11:0] clock = 0;
 
 	always @ (posedge clk12MHz) begin
         clock <= clock + 1;
@@ -53,8 +53,7 @@ module LedDisplay (
 	assign { lcol4, lcol3, lcol2, lcol1 } = ~(1 << row);
 
 	// Map row state to the port pins
-	wire [7:0] led_row;
-	assign { led8, led7, led6, led5, led4, led3, led2, led1 } = ~led_row[7:0];
+	assign { led8, led7, led6, led5, led4, led3, led2, led1 } = ~led_row;
 	always @ (row) begin
 		case (row)
 			0: led_row = leds1;
