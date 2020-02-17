@@ -61,12 +61,12 @@ module top (
 		.leds4(leds4),
 	);
 
-    reg [48:0] counter = 0;
+    reg [48:0] counter = 48'hDeadBeef0000;
 
 	always @ (posedge clk12MHz) begin
         counter <= counter + 1;
     end
 
-	assign {leds1, leds2, leds3, leds4 } = counter;
+	assign { leds4, leds3, leds2, leds1 } = counter[48:17];
 
 endmodule
