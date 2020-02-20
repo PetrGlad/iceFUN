@@ -59,6 +59,7 @@ module top (
 		.leds2(leds2),
 		.leds3(leds3),
 		.leds4(leds4),
+		.leds_pwm(leds1[6:4])
 	);
 
     reg [48:0] counter = 48'hDeadBeef0000;

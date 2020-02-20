@@ -38,19 +38,25 @@ module LedDisplay (
 	input [7:0] leds2,
 	input [7:0] leds3,
 	input [7:0] leds4,
+	input [2:0] leds_pwm,
 	);
 
 	// Row scan clock
-	reg [11:0] clock = 0;
+	reg [12:0] clock = 0;
 
 	always @ (posedge clk12MHz) begin
         clock <= clock + 1;
     end
 
-	wire [1:0] row = clock[11:10];
+	wire [1:0] row = clock[12:11];
+
+	/* Rows do not switch off immediately, this causes some glow on previous row.
+	   So here we disabling row at the end of a cycle, this also PWMs to regulare row brighness.
+	*/
+	wire pwm = ~clock[10] && clock[9:1] < (1 << leds_pwm);
 
 	// Select LED rows sequentially in cycle
-	assign { lcol4, lcol3, lcol2, lcol1 } = ~(1 << row);
+	assign { lcol4, lcol3, lcol2, lcol1 } = ~(pwm << row);
 
 	// Map row state to the port pins
 	wire [7:0] led_row;
