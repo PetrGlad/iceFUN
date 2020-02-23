@@ -38,6 +38,7 @@ module LedDisplay (
 	input [7:0] leds2,
 	input [7:0] leds3,
 	input [7:0] leds4,
+	// LEDs brightness
 	input [2:0] leds_pwm,
 	);
 
@@ -50,23 +51,26 @@ module LedDisplay (
 
 	wire [1:0] row = clock[12:11];
 
-	/* Rows do not switch off immediately, this causes some glow on previous row.
-	   So here we disabling row at the end of a cycle, this also PWMs to regulare row brighness.
+	/* Rows do not switch off immediately, this causes slight glow on previous row.
+	   Therefore we disabling row before the end of a cycle.
+	   This also modulates fraction of "on" time to regulare row brighness.
 	*/
 	wire pwm = ~clock[10] && clock[9:1] < (1 << leds_pwm);
 
-	// Select LED rows sequentially in cycle
+	/* Select LED rows sequentially in cycle.
+	   A LED row is selected on low.
+	*/
 	assign { lcol4, lcol3, lcol2, lcol1 } = ~(pwm << row);
 
-	// Map row state to the port pins
-	wire [7:0] led_row;
+	// Map columns state to the port pins.
+	reg [7:0] led_row;
 	assign { led8, led7, led6, led5, led4, led3, led2, led1 } = ~led_row;
-	always @ (row) begin
+	always @ * begin
 		case (row)
 			0: led_row = leds1;
 			1: led_row = leds2;
 			2: led_row = leds3;
 			3: led_row = leds4;
-    	endcase
-    end
+		endcase
+	end
 endmodule

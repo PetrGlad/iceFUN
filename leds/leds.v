@@ -15,7 +15,7 @@
  *
  */
 
-`include "led_display.v"
+`include "../cores/led_display.v"
 
 module top (
 	input clk12MHz,
@@ -33,13 +33,13 @@ module top (
 	output lcol4,
 );
 
-// This is "video memory", state of these bits appears on the led display.
+	// This is "video memory", state of these bits appears on the led display.
+	localparam LED_COUNT = 8 * 4;
 	wire [7:0] leds1;
 	wire [7:0] leds2;
 	wire [7:0] leds3;
 	wire [7:0] leds4;
 
-// Instantiate the led display module
  	LedDisplay display (
 		.clk12MHz(clk12MHz),
 		.led1(led1),
@@ -68,6 +68,6 @@ module top (
         counter <= counter + 1;
     end
 
-	assign { leds4, leds3, leds2, leds1 } = counter[48:17];
+	assign { leds4, leds3, leds2, leds1 } = counter[48:48 - LED_COUNT + 1];
 
 endmodule

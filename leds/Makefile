@@ -1,7 +1,5 @@
-# Project setup
-PROJ      = leds
+PROJ = leds
 
-# Files
 FILES = leds.v
 
 .PHONY: iceFUN clean burn
@@ -16,7 +14,7 @@ iceFUN:
 	icepack $(PROJ).asc $(PROJ).bin
 
 burn:
-	iceFUNprog $(PROJ).bin
+	iceFUNprog -v $(PROJ).bin
 
 clean:
 	rm *.asc *.bin *blif
