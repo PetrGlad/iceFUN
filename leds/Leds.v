@@ -15,10 +15,9 @@
  *
  */
 
-// LED matrix driver.
+`include "../cores/LedDisplay.v"
 
-module LedDisplay (
-	// Device connections
+module Leds (
 	input clk12MHz,
 	output led1,
 	output led2,
@@ -31,46 +30,44 @@ module LedDisplay (
 	output lcol1,
 	output lcol2,
 	output lcol3,
-	output lcol4,
+	output lcol4
+);
 
-	// Displayed data (LED states, 4 bytes, one byte per row)
-	input [7:0] leds1,
-	input [7:0] leds2,
-	input [7:0] leds3,
-	input [7:0] leds4,
-	// LEDs brightness
-	input [2:0] leds_pwm,
+	// This is "video memory", state of these bits appears on the led display.
+	localparam LED_COUNT = 8 * 4;
+	wire [7:0] leds1;
+	wire [7:0] leds2;
+	wire [7:0] leds3;
+	wire [7:0] leds4;
+
+ 	LedDisplay display (
+		.clk12MHz(clk12MHz),
+		.led1(led1),
+		.led2(led2),
+		.led3(led3),
+		.led4(led4),
+		.led5(led5),
+		.led6(led6),
+		.led7(led7),
+		.led8(led8),
+		.lcol1(lcol1),
+		.lcol2(lcol2),
+		.lcol3(lcol3),
+		.lcol4(lcol4),
+
+		.leds1(leds1),
+		.leds2(leds2),
+		.leds3(leds3),
+		.leds4(leds4),
+		.leds_pwm(leds1[6:4])
 	);
 
-	// Row scan clock
-	reg [12:0] clock = 0;
+    reg [48:0] counter = 48'hDeadBeef0000;
 
 	always @ (posedge clk12MHz) begin
-        clock <= clock + 1;
+        counter <= counter + 1;
     end
 
-	wire [1:0] row = clock[12:11];
+	assign { leds4, leds3, leds2, leds1 } = counter[48:48 - LED_COUNT + 1];
 
-	/* Rows do not switch off immediately, this causes slight glow on previous row.
-	   Therefore we disabling row before the end of a cycle.
-	   This also modulates fraction of "on" time to regulare row brighness.
-	*/
-	wire pwm = ~clock[10] && clock[9:1] < (1 << leds_pwm);
-
-	/* Select LED rows sequentially in cycle.
-	   A LED row is selected on low.
-	*/
-	assign { lcol4, lcol3, lcol2, lcol1 } = ~(pwm << row);
-
-	// Map columns state to the port pins.
-	reg [7:0] led_row;
-	assign { led8, led7, led6, led5, led4, led3, led2, led1 } = ~led_row;
-	always @ * begin
-		case (row)
-			0: led_row = leds1;
-			1: led_row = leds2;
-			2: led_row = leds3;
-			3: led_row = leds4;
-		endcase
-	end
 endmodule
