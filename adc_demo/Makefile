@@ -2,9 +2,9 @@ PROJ = adc
 
 FILES = AdcDemo.v
 
-.PHONY: iceFUN clean burn
+.PHONY: build clean burn
 
-iceFUN:
+build:
 	verilator --lint-only -Wall $(FILES)
 	# synthesize using Yosys
 	yosys -p "synth_ice40 -top AdcDemo -json $(PROJ).json" $(FILES)
@@ -14,6 +14,9 @@ iceFUN:
 
 	# Convert to bitstream using IcePack
 	icepack $(PROJ).asc $(PROJ).bin
+
+gui:
+	nextpnr-ice40 --gui -r --hx8k --json $(PROJ).json --package cb132 --asc $(PROJ).asc --opt-timing --pcf iceFUN.pcf
 
 sim:
 	verilator -cc --exe AdcDemo.v sim_main.cpp
