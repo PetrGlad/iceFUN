@@ -21,3 +21,12 @@ set_io --warn-no-port tx    P4
 set_io --warn-no-port rx    P5
 
 set_io --warn-no-port clk12MHz	P7
+
+set_io --warn-no-port out0	B14
+set_io --warn-no-port out1	C12
+set_io --warn-no-port out2	C14
+set_io --warn-no-port out3	D12
+set_io --warn-no-port out4	D14
+set_io --warn-no-port out5	E12
+set_io --warn-no-port out6	E14
+set_io --warn-no-port out7	F12

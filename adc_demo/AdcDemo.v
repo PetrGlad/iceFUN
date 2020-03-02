@@ -13,10 +13,21 @@ module AdcDemo (
 	output lcol1,
 	output lcol2,
 	output lcol3,
-	output lcol4//,
+	output lcol4,
 
-//    input rx,
-//    output tx
+    output out0,
+    output out1,
+    output out2,
+    output out3,
+    output out4,
+    output out5,
+    output out6,
+    output out7,
+
+//    output spkp,
+//    output spkm,
+    input rx,
+    output tx
 );
 
 	reg [7:0] leds1;
@@ -46,7 +57,8 @@ module AdcDemo (
 		.leds_pwm(6)
 	);
 
-    // Serial protocol: 250k baud, 1 start, 8 data, 1 stop, no parity
+    // https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter
+    // Required serial protocol: 250k baud, 1 start, 8 data, 1 stop, no parity
 
 	localparam TICKS_PER_CYCLE = 48;
     reg [5:0] serialClock = 0;
@@ -61,46 +73,63 @@ module AdcDemo (
     // ----------------------------------------------------
     // Transmission
 
-//	reg [7:0] sendData;
-	reg sending;
-//	reg txLine;
-//	assign tx = txLine;
-	reg sent;
+	reg [7:0] sendData;
+	reg sendReq = 0;
 
-//	reg [4:0] sendBitCount = 5'b0;
-//	reg [9:0] sendBits;
+	reg [4:0] sendBitCount = 0;
+	reg [9:0] sendBits;
+	reg sending = 0;
+	reg sent = 0;
 
-//	always @ (posedge sending) begin
-//		sendBits <= {1'b0, sendData, 1'b1};
-//		sendBitCount <= $bits(sendBits);
-//    end
-//
-//	always @ (serialClock == 0) begin
-//		if (sendBitCount > 0) begin
-//		    sendBitCount <= sendBitCount - 1;
-//		    // TODO Trying little-endian (reverse if this does not work).
-//			txLine <= sendBits[0];
-//			sendBits <= sendBits >> 1;
-//		end else begin
-//			txLine <= 1;
-//			sending <= 0;
-//		end
-//    end
+	initial tx = 1;
+
+	always @ (posedge clk12MHz) begin
+	    if (sendReq) begin
+            if (!sending && !sent) begin
+            	sendBits <= {1'b1, sendData, 1'b0};
+                sendBitCount <= 10;
+                sending <= 1;
+            end else if (serialClock == 0) begin
+                if (sendBitCount > 0) begin
+                    sendBitCount <= sendBitCount - 1;
+                    tx <= sendBits[0];
+                    sendBits <= sendBits >> 1;
+                end else begin
+                    tx <= 1;
+                    sending <= 0;
+                    sent <= 1;
+                end
+            end
+		end else
+		    sent <= 0;
+    end
 
     // ----------------------------------------------------
     // Receiving
 
-//    reg [15:0] recvData;
-//    reg [3:0] recvBitCount;
-//    reg receiving = 0;
+    reg [7:0] recvData;
+    reg [3:0] recvBitCount = 0;
+    reg receiving = 0;
+    reg dataReady = 0;
 
-//    always @ (negedge rx) begin
-//        // TODO reading already or start?
-//        // reading - ignore
-//        // otherwise start shifting in
-//    end
+    reg recvTrigger = ~rx || dataReady;
 
-    // TODO read cycle (triggered above)
+    always @ (posedge recvTrigger) begin
+        if (!receiving) begin
+            receiving <= 1;
+        end else if (dataReady)
+            receiving <= 0;
+    end
+
+    always @ (posedge serialClock[0]) begin
+        if (receiving) begin
+            if (recvBitCount == 0) begin
+                 dataReady <= 1;
+            end else if (recvBitCount != 10)
+                recvData[9 - recvBitCount] <= rx;
+            recvBitCount <= recvBitCount - 1;
+        end
+    end
 
     // ----------------------------------------------------
     // DAC protocol
@@ -114,37 +143,33 @@ module AdcDemo (
     end
 
     assign leds1 = clock[24:17];
-    assign leds4 = {6'b0, sending, sent}; // Debug ; {tx, sending, 4'b0000, receiving, rx}; // Debug
 
-//    initial begin
-//        sending <= 1;
-//        sent <= 0;
-//    end
+    reg dacRequested = 0;
 
-    always @ (posedge clock[21]) begin
-//            if (sending) begin
-//                sending <= 0;
-//                sent <= 1;
-//            end else begin
-//                sending <= 1;
-//                sent <= 0;
-//            end
-        if (sending == sent) begin
-            {sent, sending} <= 2'b10;
-        end else begin
-            {sent, sending} <= {sending, sent};
-        end
+    assign leds4 = {tx, 4'b0, sending, sendReq, dacRequested}; // Debug ; {tx, sending, 4'b0000, receiving, rx}; // Debug
+    assign leds3 = recvData;
+    assign {out7, out6, out5, out4, out3, out2, out1, out0} = {rx, tx, sent, sending, sendReq, dacRequested, serialClock[0], clk12MHz};
+
+    always @ (posedge clock[18]) begin
+        if (dacRequested == 0) begin
+            dacRequested <= 1;
+            sendData <= 8'hA1; // 8'b0; 8'b10101010; //
+            sendReq <= 1;
+        end else if (clock[20])
+            dacRequested <= 0;
+        else if (sent)
+            sendReq <= 0;
     end
 
 //    always @ (posedge clock[21]) begin
 //        leds1 <= clock[27:20]; // Debug
 //        leds2 <= clock[7:0]; // 8'h02;
 //        leds3 <= 1;
-
-        // X1 - 0xA1
-        // X2 - 0xA2
-        // X3 - 0xA3
-        // X4 - 0xA4
+//
+//        // X1 - 0xA1
+//        // X2 - 0xA2
+//        // X3 - 0xA3
+//        // X4 - 0xA4
 //	    sendData <= 8'hA1;
 //        sending <= !sent;
 //    end
