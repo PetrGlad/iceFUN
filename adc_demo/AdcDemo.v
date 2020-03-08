@@ -31,8 +31,8 @@ module AdcDemo (
 );
 
 	reg [7:0] leds1;
-	reg [7:0] leds2 = 0;
-	reg [7:0] leds3 = 0;
+	reg [7:0] leds2;
+	reg [7:0] leds3;
 	reg [7:0] leds4;
 
  	LedDisplay display (
@@ -64,17 +64,17 @@ module AdcDemo (
     reg [5:0] serialClock = 0;
 	always @ (posedge clk12MHz) begin
 		// Ticking at 250KHz
-		if (serialClock < TICKS_PER_CYCLE)
-			serialClock <= serialClock + 1;
+		if (serialClock != 0)
+			serialClock <= serialClock - 1;
 		else
-			serialClock <= 0;
+			serialClock <= TICKS_PER_CYCLE;
     end
 
     // ----------------------------------------------------
     // Transmission
 
-	reg [7:0] sendData;
 	reg sendReq = 0;
+	reg [7:0] sendData;
 
 	reg [4:0] sendBitCount = 0;
 	reg [9:0] sendBits;
@@ -107,88 +107,93 @@ module AdcDemo (
     // ----------------------------------------------------
     // Receiving
 
+    reg readyForRx = 0;
     reg [7:0] recvData;
-    reg [3:0] recvBitCount = 0;
+
+    reg [3:0] recvBitIdx = 0;
+    reg [5:0] rxClock = 0;
     reg receiving = 0;
     reg dataReady = 0;
 
-    reg recvTrigger = ~rx || dataReady;
-
-    always @ (posedge recvTrigger) begin
-        if (!receiving) begin
-            receiving <= 1;
-        end else if (dataReady)
-            receiving <= 0;
-    end
-
-    always @ (posedge serialClock[0]) begin
-        if (receiving) begin
-            if (recvBitCount == 0) begin
-                 dataReady <= 1;
-            end else if (recvBitCount != 10)
-                recvData[9 - recvBitCount] <= rx;
-            recvBitCount <= recvBitCount - 1;
-        end
+    always @ (posedge clk12MHz) begin
+        if (readyForRx) begin
+            if (!dataReady) begin
+                if (receiving) begin
+                    if (rxClock == 0) begin
+                        if (recvBitIdx == 0) begin // Also skips stop bit
+                            receiving <= 0;
+                            dataReady <= 1;
+                        end else begin
+                            recvData <= {rx, recvData[7:1]};
+                            recvBitIdx <= recvBitIdx - 1;
+                            rxClock <= TICKS_PER_CYCLE;
+                        end
+                    end else
+                        rxClock <= rxClock - 1;
+                end else if (~rx) begin
+                    receiving <= 1;
+                    recvBitIdx <= 9;
+                    rxClock <= 5; // Add small sampling delay, just in case.
+                end
+            end
+        end else
+            dataReady <= 0;
     end
 
     // ----------------------------------------------------
     // DAC protocol
 
-    // Generating some example events
-    /* verilator lint_off UNOPTFLAT */
-    reg [39:0] clock = 0;
-    /* verilator lint_on UNOPTFLAT */
+    localparam S_INIT = 0, S_ADC_REQ_1 = 1, S_ADC_RECV_1 = 2, S_ADC_REQ_2 =3, S_ADC_RECV_2 = 4;
+    reg [2:0] state = S_INIT;
+
+    reg [9:0] measurement;
+
+    // Demo
+    assign leds1 = measurement[7:0];
+    assign leds2 = {6'b0, measurement[9:8]};
+
+    // Debug
+    assign leds4 = {rx, receiving, tx, sending, 1'b0, state};
+    assign leds3 = 0;
+    assign {out7, out6, out5, out4, out3, out2, out1, out0} = {rx, rxClock == 0, tx, dataReady, state, clk12MHz};
+    // assign {out7, out6, out5, out4, out3, out2, out1, out0} = clock[7:0];
+
     always @ (posedge clk12MHz) begin
-        clock <= clock + 1;
+        case (state)
+            S_INIT: begin
+                // DAC ids: X1 - 0xA1, X2 - 0xA2, X3 - 0xA3, X4 - 0xA4
+                sendData <= 8'hA1;
+                sendReq <= 1;
+                state <= S_ADC_REQ_1;
+            end
+            S_ADC_REQ_1: begin
+                if (sent) begin
+                    sendReq <= 0;
+                    readyForRx <= 1;
+                    state <= S_ADC_RECV_1;
+                end
+            end
+            S_ADC_RECV_1: begin
+                if (dataReady) begin
+                    readyForRx <= 0;
+                    measurement[7:0] <= recvData;
+                    state <= S_ADC_REQ_2;
+                end
+            end
+            S_ADC_REQ_2: begin
+                // Wait for serial reader to get ready for next frame
+                if (!dataReady) begin
+                    readyForRx <= 1;
+                    state <= S_ADC_RECV_2;
+                end
+            end
+            S_ADC_RECV_2: begin
+                if (dataReady) begin
+                    readyForRx <= 0;
+                    measurement[9:8] <= recvData[1:0];
+                    state <= S_INIT;
+                end
+            end
+        endcase
     end
-
-    assign leds1 = clock[24:17];
-
-    reg dacRequested = 0;
-
-    assign leds4 = {tx, 4'b0, sending, sendReq, dacRequested}; // Debug ; {tx, sending, 4'b0000, receiving, rx}; // Debug
-    assign leds3 = recvData;
-    assign {out7, out6, out5, out4, out3, out2, out1, out0} = {rx, tx, sent, sending, sendReq, dacRequested, serialClock[0], clk12MHz};
-
-    always @ (posedge clock[18]) begin
-        if (dacRequested == 0) begin
-            dacRequested <= 1;
-            sendData <= 8'hA1; // 8'b0; 8'b10101010; //
-            sendReq <= 1;
-        end else if (clock[20])
-            dacRequested <= 0;
-        else if (sent)
-            sendReq <= 0;
-    end
-
-//    always @ (posedge clock[21]) begin
-//        leds1 <= clock[27:20]; // Debug
-//        leds2 <= clock[7:0]; // 8'h02;
-//        leds3 <= 1;
-//
-//        // X1 - 0xA1
-//        // X2 - 0xA2
-//        // X3 - 0xA3
-//        // X4 - 0xA4
-//	    sendData <= 8'hA1;
-//        sending <= !sent;
-//    end
-
-//    always @ (posedge sent) begin
-//        leds1 <= 8'h05; // Debug
-//        leds2 <= 8'h4; // recvData[7:0];
-//        leds3 <= 8'h8; // recvData[15:7];
-//        {leds1, leds2, leds3} <= {8'h05, 8'h4, 8'h8};
-
-
-//        recvBitCount <= 16;
-//        receiving <= 1;
-//    end
-
-//    always @ (negedge receiving) begin
-//        leds1 <= 3; // Debug
-//
-//        leds2 <= 8'h88; // recvData[7:0];
-//        leds3 <= 8'h44; // recvData[15:7];
-//    end
 endmodule
