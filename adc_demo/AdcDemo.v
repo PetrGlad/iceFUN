@@ -81,7 +81,8 @@ module AdcDemo (
 	reg sending = 0;
 	reg sent = 0;
 
-	initial tx = 1;
+	reg txReg = 1;
+    assign tx = txReg;
 
 	always @ (posedge clk12MHz) begin
 	    if (sendReq) begin
@@ -92,10 +93,10 @@ module AdcDemo (
             end else if (serialClock == 0) begin
                 if (sendBitCount > 0) begin
                     sendBitCount <= sendBitCount - 1;
-                    tx <= sendBits[0];
+                    txReg <= sendBits[0];
                     sendBits <= sendBits >> 1;
                 end else begin
-                    tx <= 1;
+                    txReg <= 1;
                     sending <= 0;
                     sent <= 1;
                 end
