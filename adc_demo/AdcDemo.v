@@ -1,4 +1,14 @@
 `include "../cores/LedDisplay.v"
+`include "common.v"
+
+// J1 code is from git@github.com:jamesbowman/j1.git
+// Copied it here to simplify debugging
+// Modifications to cross.fs:
+// 1. 16 bit hex output is reuired from Forth firmware assembler (32bit uses wrong word ordering)
+// 2. Remove 'bootloader' and 'main' functions requirement from cross.fs
+// 3. Use ./build output path
+// common.h renamed to common.v
+`include "j1.v"
 
 module AdcDemo (
 	input clk12MHz,
@@ -58,7 +68,7 @@ module AdcDemo (
 	);
 
     // https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter
-    // Required serial protocol: 250k baud, 1 start, 8 data, 1 stop, no parity
+    // Required serial protocol for iceFUN: 250k baud, 1 start, 8 data, 1 stop, no parity
 
 	localparam TICKS_PER_CYCLE = 48;
     reg [5:0] serialClock = 0;
@@ -142,22 +152,89 @@ module AdcDemo (
     end
 
     // ----------------------------------------------------
-    // DAC protocol
-
-    localparam S_INIT = 0, S_ADC_REQ_1 = 1, S_ADC_RECV_1 = 2, S_ADC_REQ_2 =3, S_ADC_RECV_2 = 4;
-    reg [2:0] state = S_INIT;
+    // J1 CPU experiment
 
     reg [9:0] measurement;
 
-    // Demo
+    wire cpuClock = clk12MHz;
+
+    reg [15:0] program_mem [0:255];
+    initial $readmemh("fw/icefun-fw.hex", program_mem);
+
+    localparam data_mem_size = 512;
+    localparam mem_addr_width = $clog2(data_mem_size + 1);
+    reg [`WIDTH-1:0] data_mem [0:data_mem_size];
+
+    reg resetq = 1; // j1 in
+    wire io_wr; // j1 out
+    wire mem_wr; // j1 out
+    wire [15:0] mem_addr; // j1 out
+    reg [`WIDTH-1:0] dout; // j1 out
+    reg [`WIDTH-1:0] mem_din; // j1 in
+    reg [`WIDTH-1:0] io_din; // j1 in
+
+    wire [12:0] code_addr; // j1 out
+    reg [15:0] insn; // j1 in
+
+    /* verilator lint_off UNUSED */
+    reg j1_err_addr_overflow;
+    /* verilator lint_on UNUSED */
+
+    j1 cpu (
+        .clk(cpuClock),
+        .resetq(resetq),
+
+        .io_wr(io_wr),
+        .io_din(io_din),
+
+        .mem_addr(mem_addr),
+        .mem_wr(mem_wr),
+        .dout(dout),
+        .mem_din(mem_din),
+
+        .code_addr(code_addr),
+        .insn(insn)
+    );
+
+    reg [7:0] probe8;
+    assign {out7, out6, out5, out4, out3, out2, out1, out0} = probe8;
+
+    wire [mem_addr_width-1:0] phy_mem_addr = mem_addr[mem_addr_width-1:0];
+
+    always @(posedge cpuClock) begin
+        probe8 <= {mem_wr, io_wr, rx, tx, measurement[3:0]}; // DEBUG
+        $display("pc=%x mem_addr=%x mem_wr=%x io_wr=%x ", code_addr, mem_addr, mem_wr, io_wr); // DEBUG
+
+        if (mem_wr)
+            data_mem[phy_mem_addr] <= dout;
+        mem_din <= data_mem[phy_mem_addr];
+
+        if (io_wr) begin
+            case (mem_addr)
+                'h1: leds3 <= dout[7:0];
+            endcase
+        end
+        case (mem_addr)
+            'h0: io_din <= {22'b0, measurement};
+            default: io_din <= 0;
+        endcase
+
+        insn <= program_mem[code_addr[7:0]];
+        j1_err_addr_overflow <= |code_addr[12:7];
+    end
+
+    assign leds4 = {io_wr, mem_wr, mem_addr[1:0], j1_err_addr_overflow, code_addr[2:0]}; // DEBUG
+
+    // ----------------------------------------------------
+    // iceFUN DAC protocol
+    // 1. Send DAC id.
+    // 2. Receive 2 bytes with 10 bit measured value
+
+    localparam S_INIT = 0, S_ADC_REQ_1 = 1, S_ADC_RECV_1 = 2, S_ADC_REQ_2 = 3, S_ADC_RECV_2 = 4;
+    reg [2:0] state = S_INIT;
+
     assign leds1 = measurement[7:0];
     assign leds2 = {6'b0, measurement[9:8]};
-
-    // Debug
-    assign leds4 = {rx, receiving, tx, sending, 1'b0, state};
-    assign leds3 = 0;
-    assign {out7, out6, out5, out4, out3, out2, out1, out0} = {rx, rxClock == 0, tx, dataReady, state, clk12MHz};
-    // assign {out7, out6, out5, out4, out3, out2, out1, out0} = clock[7:0];
 
     always @ (posedge clk12MHz) begin
         case (state)

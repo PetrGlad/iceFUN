@@ -18,4 +18,4 @@ burn:
 	iceFUNprog -v $(PROJ).bin
 
 clean:
-	rm *.asc *.bin *blif
+	rm -f *.asc *.bin *.blif
