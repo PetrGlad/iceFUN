@@ -1,5 +1,9 @@
 # For iceFUN board
 
+# The clock.
+set_io --warn-no-port clk12MHz	P7
+
+# LED matrix column bits
 set_io --warn-no-port led1	 	C10
 set_io --warn-no-port led2 		A10
 set_io --warn-no-port led3 		D7
@@ -9,19 +13,32 @@ set_io --warn-no-port led6	 	C7
 set_io --warn-no-port led7	 	A4
 set_io --warn-no-port led8	 	C4
 
+# LED matrix column select (active low).
 set_io --warn-no-port lcol1		A12
 set_io --warn-no-port lcol2	 	D10
 set_io --warn-no-port lcol3 	A6
 set_io --warn-no-port lcol4 	C5
 
-# set_io --warn-no-port spkp  	M12
-# set_io --warn-no-port spkm  	M6
+# Speaker.
+set_io --warn-no-port spkp  	M12
+set_io --warn-no-port spkm  	M6
 
+# Controller serial connection (ADC reads only).
 set_io --warn-no-port tx    P4
 set_io --warn-no-port rx    P5
 
-set_io --warn-no-port clk12MHz	P7
+# Button switches.
+set_io --warn-no-port sw1	C11
+set_io --warn-no-port sw2	C6
+set_io --warn-no-port sw3	A11
+set_io --warn-no-port sw4	A5
 
+# High current LED drivers.
+set_io --warn-no-port hc_led1 L14
+set_io --warn-no-port hc_led2 N14
+set_io --warn-no-port hc_led3 P14
+
+# Some debugging connections.
 set_io --warn-no-port out0	B14
 set_io --warn-no-port out1	C12
 set_io --warn-no-port out2	C14
