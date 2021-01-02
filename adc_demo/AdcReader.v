@@ -32,7 +32,7 @@ module AdcReader (
             .clock(clock12MHz),
             .sendRequest(sendReq),
             .sendData(sendData),
-            .serial(serialOut),
+            .serialOut(serialOut),
             .sendComplete(sent)
         );
 

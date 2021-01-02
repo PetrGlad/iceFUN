@@ -14,7 +14,7 @@ module UartTx #(
     input sendRequest,
     input [7:0] sendData,
 
-    output serial,
+    output serialOut,
     output sendComplete
 );
 
@@ -35,7 +35,7 @@ module UartTx #(
     assign sendComplete = sent;
 
 	reg tx = 1;
-    assign serial = tx;
+    assign serialOut = tx;
 
 	always @ (posedge serialClock) begin
 	    if (sendRequest) begin
