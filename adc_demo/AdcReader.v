@@ -52,17 +52,8 @@ module AdcReader (
             .complete(dataReady)
         );
 
-    reg [9:0] measurement1;
-    assign value1 = measurement1;
-
-    reg [9:0] measurement2;
-    assign value2 = measurement2;
-
-    reg [9:0] measurement3;
-    assign value3 = measurement3;
-
-    reg [9:0] measurement4;
-    assign value4 = measurement4;
+    reg [9:0] channel1, channel2, channel3, channel4;
+    assign {value1, value2, value3, value4} = {channel1, channel2, channel3, channel4};
 
     localparam
         S_ADC_INIT = 0,
@@ -112,11 +103,11 @@ module AdcReader (
             S_ADC_DONE: begin
                 if (dataReady) begin
                     case (adcChannel)
-                        0: measurement1 <= value;
-                        1: measurement2 <= value;
-                        2: measurement3 <= value;
+                        0: channel1 <= value;
+                        1: channel2 <= value;
+                        2: channel3 <= value;
                         3: begin
-                            measurement4 <= value;
+                            channel4 <= value;
                             adcChannel <= 0;
                         end
                     endcase
