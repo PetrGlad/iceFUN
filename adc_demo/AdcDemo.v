@@ -10,20 +10,22 @@
 // common.h renamed to common.v
 `include "j1.v"
 
+`include "AdcReader.v"
+
 module AdcDemo (
-	input clk12MHz,
-	output led1,
-	output led2,
-	output led3,
-	output led4,
-	output led5,
-	output led6,
-	output led7,
-	output led8,
-	output lcol1,
-	output lcol2,
-	output lcol3,
-	output lcol4,
+    input clk12MHz,
+    output led1,
+    output led2,
+    output led3,
+    output led4,
+    output led5,
+    output led6,
+    output led7,
+    output led8,
+    output lcol1,
+    output lcol2,
+    output lcol3,
+    output lcol4,
 
     output out0,
     output out1,
@@ -34,10 +36,10 @@ module AdcDemo (
     output out6,
     output out7,
 
-//    output spkp,
-//    output spkm,
     input rx,
-    output tx
+    output tx,
+
+    input sw1
 );
 
 	reg [7:0] leds1;
@@ -67,94 +69,10 @@ module AdcDemo (
 		.leds_pwm(6)
 	);
 
-    // https://en.wikipedia.org/wiki/Universal_asynchronous_receiver-transmitter
-    // Required serial protocol for iceFUN: 250k baud, 1 start, 8 data, 1 stop, no parity
-
-	localparam TICKS_PER_CYCLE = 48;
-    reg [5:0] serialClock = 0;
-	always @ (posedge clk12MHz) begin
-		// Ticking at 250KHz
-		if (serialClock != 0)
-			serialClock <= serialClock - 1;
-		else
-			serialClock <= TICKS_PER_CYCLE;
-    end
-
-    // ----------------------------------------------------
-    // Transmission
-
-	reg sendReq = 0;
-	reg [7:0] sendData;
-
-	reg [4:0] sendBitCount = 0;
-	reg [9:0] sendBits;
-	reg sending = 0;
-	reg sent = 0;
-
-	reg txReg = 1;
-    assign tx = txReg;
-
-	always @ (posedge clk12MHz) begin
-	    if (sendReq) begin
-            if (!sending && !sent) begin
-            	sendBits <= {1'b1, sendData, 1'b0};
-                sendBitCount <= 10;
-                sending <= 1;
-            end else if (serialClock == 0) begin
-                if (sendBitCount > 0) begin
-                    sendBitCount <= sendBitCount - 1;
-                    txReg <= sendBits[0];
-                    sendBits <= sendBits >> 1;
-                end else begin
-                    txReg <= 1;
-                    sending <= 0;
-                    sent <= 1;
-                end
-            end
-		end else
-		    sent <= 0;
-    end
-
-    // ----------------------------------------------------
-    // Receiving
-
-    reg readyForRx = 0;
-    reg [7:0] recvData;
-
-    reg [3:0] recvBitIdx = 0;
-    reg [5:0] rxClock = 0;
-    reg receiving = 0;
-    reg dataReady = 0;
-
-    always @ (posedge clk12MHz) begin
-        if (readyForRx) begin
-            if (!dataReady) begin
-                if (receiving) begin
-                    if (rxClock == 0) begin
-                        if (recvBitIdx == 0) begin // Also skips stop bit
-                            receiving <= 0;
-                            dataReady <= 1;
-                        end else begin
-                            recvData <= {rx, recvData[7:1]};
-                            recvBitIdx <= recvBitIdx - 1;
-                            rxClock <= TICKS_PER_CYCLE;
-                        end
-                    end else
-                        rxClock <= rxClock - 1;
-                end else if (~rx) begin
-                    receiving <= 1;
-                    recvBitIdx <= 9;
-                    rxClock <= 5; // Add small sampling delay, just in case.
-                end
-            end
-        end else
-            dataReady <= 0;
-    end
-
     // ----------------------------------------------------
     // J1 CPU experiment
 
-    reg [9:0] measurement;
+    wire [9:0] measurement;
 
     wire cpuClock = clk12MHz;
 
@@ -223,55 +141,29 @@ module AdcDemo (
         j1_err_addr_overflow <= |code_addr[12:7];
     end
 
-    assign leds4 = {io_wr, mem_wr, mem_addr[1:0], j1_err_addr_overflow, code_addr[2:0]}; // DEBUG
-
-    // ----------------------------------------------------
-    // iceFUN DAC protocol
-    // 1. Send DAC id.
-    // 2. Receive 2 bytes with 10 bit measured value
-
-    localparam S_INIT = 0, S_ADC_REQ_1 = 1, S_ADC_RECV_1 = 2, S_ADC_REQ_2 = 3, S_ADC_RECV_2 = 4;
-    reg [2:0] state = S_INIT;
+    // assign leds4 = {io_wr, mem_wr, mem_addr[1:0], j1_err_addr_overflow, code_addr[2:0]}; // DEBUG
 
     assign leds1 = measurement[7:0];
     assign leds2 = {6'b0, measurement[9:8]};
 
-    always @ (posedge clk12MHz) begin
-        case (state)
-            S_INIT: begin
-                // DAC ids: X1 - 0xA1, X2 - 0xA2, X3 - 0xA3, X4 - 0xA4
-                sendData <= 8'hA1;
-                sendReq <= 1;
-                state <= S_ADC_REQ_1;
-            end
-            S_ADC_REQ_1: begin
-                if (sent) begin
-                    sendReq <= 0;
-                    readyForRx <= 1;
-                    state <= S_ADC_RECV_1;
-                end
-            end
-            S_ADC_RECV_1: begin
-                if (dataReady) begin
-                    readyForRx <= 0;
-                    measurement[7:0] <= recvData;
-                    state <= S_ADC_REQ_2;
-                end
-            end
-            S_ADC_REQ_2: begin
-                // Wait for serial reader to get ready for next frame
-                if (!dataReady) begin
-                    readyForRx <= 1;
-                    state <= S_ADC_RECV_2;
-                end
-            end
-            S_ADC_RECV_2: begin
-                if (dataReady) begin
-                    readyForRx <= 0;
-                    measurement[9:8] <= recvData[1:0];
-                    state <= S_INIT;
-                end
-            end
-        endcase
+    AdcReader adc (
+            .clock12MHz(clk12MHz),
+            .serialOut(tx),
+            .serialIn(rx),
+            .value(measurement)
+        );
+
+    // ----------------------------------------------------
+    // Switch bounce test
+
+    reg [7:0] bounceCounter;
+    reg swState;
+    always @(posedge clk12MHz) begin
+        if (swState != sw1) begin
+            swState <= sw1;
+            bounceCounter <= bounceCounter + 1;
+        end
     end
+    assign leds4 = bounceCounter[7:0];
+
 endmodule

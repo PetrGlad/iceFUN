@@ -3,7 +3,7 @@
 # The clock.
 set_io --warn-no-port clk12MHz	P7
 
-# LED matrix column bits
+# LED matrix column bits.
 set_io --warn-no-port led1	 	C10
 set_io --warn-no-port led2 		A10
 set_io --warn-no-port led3 		D7
