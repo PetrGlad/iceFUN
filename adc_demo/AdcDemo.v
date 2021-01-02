@@ -153,7 +153,12 @@ module AdcDemo #(
             .clock12MHz(clk12MHz),
             .serialOut(tx),
             .serialIn(rx),
-            .value(measurement)
+            .value1(measurement),
+            /* verilator lint_off PINCONNECTEMPTY */
+            .value2(),
+            .value3(),
+            .value4()
+            /* verilator lint_on PINCONNECTEMPTY */
         );
 
     // ----------------------------------------------------

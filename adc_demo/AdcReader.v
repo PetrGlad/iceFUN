@@ -13,7 +13,10 @@ module AdcReader (
     input clock12MHz,
     output serialOut,
     input serialIn,
-    output [9:0] value
+    output [9:0] value1,
+    output [9:0] value2,
+    output [9:0] value3,
+    output [9:0] value4
 );
 
     localparam uartTicksPerCycle = 48; // 250 KHz
@@ -49,17 +52,33 @@ module AdcReader (
             .complete(dataReady)
         );
 
-    reg [9:0] measurement;
-    assign value = measurement;
+    reg [9:0] measurement1;
+    assign value1 = measurement1;
 
-    localparam S_INIT = 0, S_ADC_REQ_1 = 1, S_ADC_RECV_1 = 2, S_ADC_REQ_2 = 3, S_ADC_RECV_2 = 4;
-    reg [2:0] state = S_INIT;
+    reg [9:0] measurement2;
+    assign value2 = measurement2;
 
+    reg [9:0] measurement3;
+    assign value3 = measurement3;
 
+    reg [9:0] measurement4;
+    assign value4 = measurement4;
+
+    localparam
+        S_ADC_INIT = 0,
+        S_ADC_REQ_1 = 1,
+        S_ADC_RECV_1 = 2,
+        S_ADC_REQ_2 = 3,
+        S_ADC_RECV_2 = 4,
+        S_ADC_DONE = 5;
+    reg [2:0] state = S_ADC_INIT;
+    reg [1:0] adcChannel = 0;
+
+    reg [9:0] value;
     always @ (posedge clock12MHz) begin
         case (state)
-            S_INIT: begin
-                sendData <= 8'hA1;
+            S_ADC_INIT: begin
+                sendData <= 8'hA0 | {6'b0, (adcChannel + 2'b01)};
                 sendReq <= 1;
                 state <= S_ADC_REQ_1;
             end
@@ -73,7 +92,7 @@ module AdcReader (
             S_ADC_RECV_1: begin
                 if (dataReady) begin
                     readyForRx <= 0;
-                    measurement[7:0] <= recvData;
+                    value[7:0] <= recvData;
                     state <= S_ADC_REQ_2;
                 end
             end
@@ -86,9 +105,23 @@ module AdcReader (
             end
             S_ADC_RECV_2: begin
                 if (dataReady) begin
+                    value[9:8] <= recvData[1:0];
+                    state <= S_ADC_DONE;
+                end
+            end
+            S_ADC_DONE: begin
+                if (dataReady) begin
+                    case (adcChannel)
+                        0: measurement1 <= value;
+                        1: measurement2 <= value;
+                        2: measurement3 <= value;
+                        3: begin
+                            measurement4 <= value;
+                            adcChannel <= 0;
+                        end
+                    endcase
                     readyForRx <= 0;
-                    measurement[9:8] <= recvData[1:0];
-                    state <= S_INIT;
+                    state <= S_ADC_INIT;
                 end
             end
         endcase
