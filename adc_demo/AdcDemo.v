@@ -1,5 +1,6 @@
+`default_nettype none
+
 `include "../cores/LedDisplay.v"
-`include "common.v"
 
 // J1 code is from git@github.com:jamesbowman/j1.git
 // Copied it here to simplify debugging
@@ -12,7 +13,9 @@
 
 `include "AdcReader.v"
 
-module AdcDemo (
+module AdcDemo #(
+    parameter WIDTH = 32
+) (
     input clk12MHz,
     output led1,
     output led2,
@@ -81,15 +84,15 @@ module AdcDemo (
 
     localparam data_mem_size = 512;
     localparam mem_addr_width = $clog2(data_mem_size + 1);
-    reg [`WIDTH-1:0] data_mem [0:data_mem_size];
+    reg [WIDTH-1:0] data_mem [0:data_mem_size];
 
     reg resetq = 1; // j1 in
     wire io_wr; // j1 out
     wire mem_wr; // j1 out
     wire [15:0] mem_addr; // j1 out
-    reg [`WIDTH-1:0] dout; // j1 out
-    reg [`WIDTH-1:0] mem_din; // j1 in
-    reg [`WIDTH-1:0] io_din; // j1 in
+    reg [WIDTH-1:0] dout; // j1 out
+    reg [WIDTH-1:0] mem_din; // j1 in
+    reg [WIDTH-1:0] io_din; // j1 in
 
     wire [12:0] code_addr; // j1 out
     reg [15:0] insn; // j1 in
@@ -98,7 +101,7 @@ module AdcDemo (
     reg j1_err_addr_overflow;
     /* verilator lint_on UNUSED */
 
-    j1 cpu (
+    j1 #(.WIDTH(WIDTH)) cpu (
         .clk(cpuClock),
         .resetq(resetq),
 
