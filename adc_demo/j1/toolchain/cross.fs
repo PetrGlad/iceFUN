@@ -263,7 +263,7 @@ warnings on
 
 :: else
     there
-    0 ubranch 
+    0 ubranch
     swap resolve
 ;
 
@@ -322,12 +322,14 @@ decimal
     s" hex" out-suffix to file
 
     hex
-    1024 0 do
+    wordstart @ 2 / 1 + \ Add empty placeholder word definition at the end of your firmware.
+    0 do
         tflash i 2* + w@
         s>d <# # # # # #> file write-line throw
     loop
     file close-file
 ;
+
 : dumpall.32
     s" hex" out-suffix to file
 
