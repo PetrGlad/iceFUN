@@ -4,7 +4,7 @@ FILES = AdcDemo.v
 
 .PHONY: build clean burn
 
-build:
+build: firmware
 	verilator --lint-only -Wall $(FILES)
 	# synthesize using Yosys
 	yosys -p "synth_ice40 -top AdcDemo -json $(PROJ).json" $(FILES)
@@ -14,6 +14,9 @@ build:
 
 	# Convert to bitstream using IcePack
 	icepack $(PROJ).asc $(PROJ).bin
+
+firmware:
+	j1/toolchain/build.sh icefun-fw.fs build/icefun-fw.hex
 
 gui:
 	nextpnr-ice40 --gui -r --hx8k --json $(PROJ).json --package cb132 --asc $(PROJ).asc --pcf iceFUN.pcf
