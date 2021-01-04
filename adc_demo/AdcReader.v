@@ -69,7 +69,7 @@ module AdcReader (
     always @ (posedge clock12MHz) begin
         case (state)
             S_ADC_INIT: begin
-                sendData <= 8'hA0 | {6'b0, (adcChannel + 2'b01)};
+                sendData <= 8'hA1 + {6'b0, adcChannel};
                 sendReq <= 1;
                 state <= S_ADC_REQ_1;
             end
@@ -106,11 +106,9 @@ module AdcReader (
                         0: channel1 <= value;
                         1: channel2 <= value;
                         2: channel3 <= value;
-                        3: begin
-                            channel4 <= value;
-                            adcChannel <= 0;
-                        end
+                        3: channel4 <= value;
                     endcase
+                    adcChannel <= adcChannel + 1;
                     readyForRx <= 0;
                     state <= S_ADC_INIT;
                 end
