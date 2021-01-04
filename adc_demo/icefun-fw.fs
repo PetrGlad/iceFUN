@@ -1,11 +1,12 @@
 : boot
     begin
-        3
+        d# 3
         begin
             dup io@
-            dup h# a + io!
-            -1 +
-            dup 0 <
+            over
+            h# 10 + io!
+            d# -1 +
+            dup d# 0 <
         until
     again
 ;
