@@ -1,4 +1,4 @@
-`include "stack.v"
+`include "j1/stack.v"
 
 module j1 #(
     parameter WIDTH = 32,
