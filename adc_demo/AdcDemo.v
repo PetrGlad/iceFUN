@@ -40,9 +40,7 @@ module AdcDemo #(
     output out7,
 
     input rx,
-    output tx,
-
-    input sw1
+    output tx
 );
 
 	reg [7:0] leds1;
@@ -118,7 +116,7 @@ module AdcDemo #(
     reg [7:0] probe8;
     assign {out7, out6, out5, out4, out3, out2, out1, out0} = probe8;
 
-    // Select actually availiable address bits, since only subset of CPU address space is covered by RAM,
+    // Only a subset of CPU address space is covered by RAM.
     wire [mem_addr_width - 1:0] phy_mem_addr = mem_addr[mem_addr_width - 1:0];
 
     wire [9:0] adc_value_1;
@@ -158,10 +156,6 @@ module AdcDemo #(
         j1_err_addr_overflow <= |code_addr[12:7];
     end
 
-    // assign leds4 = {io_wr, mem_wr, mem_addr[1:0], j1_err_addr_overflow, code_addr[2:0]}; // DEBUG
-    // assign leds1 = adc_value_1[7:0];
-    // assign leds2 = {6'b0, adc_value_1[9:8]};
-
     AdcReader adc (
             .clock12MHz(clk12MHz),
             .serialOut(tx),
@@ -171,18 +165,5 @@ module AdcDemo #(
             .value3(adc_value_3),
             .value4(adc_value_4)
         );
-
-    // ----------------------------------------------------
-    // Switch bounce test
-
-    reg [7:0] bounceCounter;
-    reg swState;
-    always @(posedge clk12MHz) begin
-        if (swState != sw1) begin
-            swState <= sw1;
-            bounceCounter <= bounceCounter + 1;
-        end
-    end
-    // assign leds4 = bounceCounter[7:0];
 
 endmodule
