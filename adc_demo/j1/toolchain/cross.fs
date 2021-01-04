@@ -322,7 +322,8 @@ decimal
     s" hex" out-suffix to file
 
     hex
-    wordstart @ 2 / 1 + \ Add empty placeholder word definition at the end of your firmware.
+    \ Note: you should add an empty placeholder word definition at the end of your firmware.
+    wordstart @ 2 / 1 +
     0 do
         tflash i 2* + w@
         s>d <# # # # # #> file write-line throw
