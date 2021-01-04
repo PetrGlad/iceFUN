@@ -88,7 +88,7 @@ module AdcReader (
                 end
             end
             S_ADC_REQ_2: begin
-                // Wait for serial reader to get ready for next frame
+                // Wait for serial reader to get ready for the next frame.
                 if (!dataReady) begin
                     readyForRx <= 1;
                     state <= S_ADC_RECV_2;

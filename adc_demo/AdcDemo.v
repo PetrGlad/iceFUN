@@ -9,7 +9,7 @@
 // 2. Remove 'bootloader' and 'main' functions requirement from cross.fs
 // 3. Use ./build output path
 // common.h renamed to common.v
-`include "j1.v"
+`include "j1/j1.v"
 
 `include "AdcReader.v"
 
@@ -75,12 +75,10 @@ module AdcDemo #(
     // ----------------------------------------------------
     // J1 CPU experiment
 
-    wire [9:0] measurement;
-
     wire cpuClock = clk12MHz;
 
     reg [15:0] program_mem [0:255];
-    initial $readmemh("fw/icefun-fw.hex", program_mem);
+    initial $readmemh("build/icefun-fw.hex", program_mem);
 
     localparam data_mem_size = 512;
     localparam mem_addr_width = $clog2(data_mem_size + 1);
@@ -120,23 +118,39 @@ module AdcDemo #(
     reg [7:0] probe8;
     assign {out7, out6, out5, out4, out3, out2, out1, out0} = probe8;
 
-    wire [mem_addr_width-1:0] phy_mem_addr = mem_addr[mem_addr_width-1:0];
+    // Select actually availiable address bits, since only subset of CPU address space is covered by RAM,
+    wire [mem_addr_width - 1:0] phy_mem_addr = mem_addr[mem_addr_width - 1:0];
+
+    wire [9:0] adc_value_1;
+    wire [9:0] adc_value_2;
+    wire [9:0] adc_value_3;
+    wire [9:0] adc_value_4;
 
     always @(posedge cpuClock) begin
-        probe8 <= {mem_wr, io_wr, rx, tx, measurement[3:0]}; // DEBUG
+        probe8 <= {mem_wr, io_wr, rx, tx, adc_value_1[3:0]}; // DEBUG
         $display("pc=%x mem_addr=%x mem_wr=%x io_wr=%x ", code_addr, mem_addr, mem_wr, io_wr); // DEBUG
 
         if (mem_wr)
             data_mem[phy_mem_addr] <= dout;
-        mem_din <= data_mem[phy_mem_addr];
-
         if (io_wr) begin
             case (mem_addr)
-                'h1: leds3 <= dout[7:0];
+                'h10: leds1 <= dout[7:0];
+                'h11: leds2 <= dout[7:0];
+                'h12: leds3 <= dout[7:0];
+                'h13: leds4 <= dout[7:0];
             endcase
         end
+
+        /* XXX On reads both memory and io values are provided since J1 does not
+            provide any indication which one it needs this time.
+            It lets J1 to save one cycle when reading (?).
+        */
+        mem_din <= data_mem[phy_mem_addr];
         case (mem_addr)
-            'h0: io_din <= {22'b0, measurement};
+            'h0: io_din <= {22'b0, adc_value_1};
+            'h1: io_din <= {22'b0, adc_value_2};
+            'h2: io_din <= {22'b0, adc_value_3};
+            'h3: io_din <= {22'b0, adc_value_4};
             default: io_din <= 0;
         endcase
 
@@ -145,20 +159,17 @@ module AdcDemo #(
     end
 
     // assign leds4 = {io_wr, mem_wr, mem_addr[1:0], j1_err_addr_overflow, code_addr[2:0]}; // DEBUG
-
-    assign leds1 = measurement[7:0];
-    assign leds2 = {6'b0, measurement[9:8]};
+    // assign leds1 = adc_value_1[7:0];
+    // assign leds2 = {6'b0, adc_value_1[9:8]};
 
     AdcReader adc (
             .clock12MHz(clk12MHz),
             .serialOut(tx),
             .serialIn(rx),
-            .value1(measurement),
-            /* verilator lint_off PINCONNECTEMPTY */
-            .value2(),
-            .value3(),
-            .value4()
-            /* verilator lint_on PINCONNECTEMPTY */
+            .value1(adc_value_1),
+            .value2(adc_value_2),
+            .value3(adc_value_3),
+            .value4(adc_value_4)
         );
 
     // ----------------------------------------------------
@@ -172,6 +183,6 @@ module AdcDemo #(
             bounceCounter <= bounceCounter + 1;
         end
     end
-    assign leds4 = bounceCounter[7:0];
+    // assign leds4 = bounceCounter[7:0];
 
 endmodule
